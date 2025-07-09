@@ -1,0 +1,17 @@
+requests
+pandas
+streamlit
+schedule
+matplotlib
+ta
+px
+plotly
+joblib
+xgboost
+numpy
+tenacity
+openai
+feedparser
+google-generativeai
+python-dotenv
+fastapi

@@ -1,0 +1,6 @@
+binance_data.db
+.env
+coin_data.db
+crypto_crawler.db
+excel_logs/*
+model.xgb
