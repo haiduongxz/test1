@@ -16,3 +16,4 @@ google-generativeai
 python-dotenv
 fastapi
 uvicorn
+scikit-learn
