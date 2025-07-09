@@ -4,8 +4,7 @@ import time
 import requests
 from datetime import datetime
 from model import load_model, add_technical_indicators, create_features_and_labels
-from pathlib import Path
-from utils import load_all_excel_logs
+from utils import load_all_excel_logs, save_signals_to_db
 from crypto_advisor import ask_gpt, get_rss_articles, load_saved_articles
 import json
 
@@ -138,10 +137,11 @@ def show_dashboard(symbols):
     )
     df_result.sort_values("SortOrder", inplace=True)
 
-    output_dir = Path("excel_logs")
-    output_dir.mkdir(exist_ok=True)
-    filename = datetime.now().strftime("crypto_signals_%Y-%m-%d_%H-%M-%S.csv")
-    df_result.to_csv(output_dir / filename, index=False)
+    # output_dir = Path("excel_logs")
+    # output_dir.mkdir(exist_ok=True)
+    # filename = datetime.now().strftime("crypto_signals_%Y-%m-%d_%H-%M-%S.csv")
+    # df_result.to_csv(output_dir / filename, index=False)
+    save_signals_to_db(df_result)
     st.session_state.history.insert(0, df_result)
 
     df_all_history = load_all_excel_logs_cached()

@@ -3,4 +3,3 @@ binance_data.db
 coin_data.db
 crypto_crawler.db
 excel_logs/*
-model.xgb

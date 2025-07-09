@@ -8,9 +8,55 @@ import glob
 from datetime import datetime
 from sqlalchemy import create_engine
 from config import PG_CONN_STRING  # PostgreSQL connection string
+import psycopg2
+from psycopg2.extras import execute_values
 
 # Kết nối đến PostgreSQL qua SQLAlchemy
 engine = create_engine(PG_CONN_STRING)
+
+
+def init_db():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS crypto_signals (
+            id SERIAL PRIMARY KEY,
+            symbol TEXT,
+            signal TEXT,
+            timestamp TIMESTAMP,
+            source TEXT DEFAULT 'streamlit'
+        );
+    """
+    )
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+
+init_db()
+
+
+def get_connection():
+    return psycopg2.connect(PG_CONN_STRING)
+
+
+def save_signals_to_db(df: pd.DataFrame):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    values = [
+        (row["Symbol"], row["Signal"], row["Thời gian"]) for _, row in df.iterrows()
+    ]
+
+    query = """
+        INSERT INTO crypto_signals (symbol, signal, timestamp)
+        VALUES %s
+    """
+    execute_values(cursor, query, values)
+    conn.commit()
+    cursor.close()
+    conn.close()
 
 
 def log(msg):
