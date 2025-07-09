@@ -5,7 +5,7 @@ BASE_URL = "https://api.binance.com"
 
 def get_exchange_info():
     url = f"{BASE_URL}/api/v3/exchangeInfo"
-    return requests.get(url).json()
+    return requests.get(url, verify=False).json()
 
 
 # def get_all_symbols():
@@ -29,10 +29,10 @@ def get_all_base_assets():
 
 def get_price(symbol):
     url = f"{BASE_URL}/api/v3/ticker/price"
-    return requests.get(url, params={"symbol": symbol}).json()
+    return requests.get(url, params={"symbol": symbol}, verify=False).json()
 
 
 def get_ohlcv(symbol, interval="1h", limit=5):
     url = f"{BASE_URL}/api/v3/klines"
     params = {"symbol": symbol, "interval": interval, "limit": limit}
-    return requests.get(url, params=params).json()
+    return requests.get(url, params=params, verify=False).json()
