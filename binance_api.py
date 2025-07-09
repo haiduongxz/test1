@@ -1,11 +1,15 @@
 import requests
 
 BASE_URL = "https://api.binance.com"
+proxies = {
+    "http": "108.136.149.20:25505",  # thay bằng proxy của bạn
+    "https": "108.136.149.20:25505",
+}
 
 
 def get_exchange_info():
     url = f"{BASE_URL}/api/v3/exchangeInfo"
-    return requests.get(url).json()
+    return requests.get(url, proxies=proxies, timeout=10).json()
 
 
 # def get_all_symbols():
@@ -27,12 +31,20 @@ def get_all_base_assets():
     return sorted(list(set(s["baseAsset"] for s in data["symbols"])))
 
 
+proxies = {
+    "http": "108.136.149.20:25505",  # thay bằng proxy của bạn
+    "https": "108.136.149.20:25505",
+}
+
+
 def get_price(symbol):
     url = f"{BASE_URL}/api/v3/ticker/price"
-    return requests.get(url, params={"symbol": symbol}).json()
+    return requests.get(
+        url, params={"symbol": symbol}, proxies=proxies, timeout=10
+    ).json()
 
 
 def get_ohlcv(symbol, interval="1h", limit=5):
     url = f"{BASE_URL}/api/v3/klines"
     params = {"symbol": symbol, "interval": interval, "limit": limit}
-    return requests.get(url, params=params).json()
+    return requests.get(url, params=params, proxies=proxies, timeout=10).json()
