@@ -17,3 +17,5 @@ python-dotenv
 fastapi
 uvicorn
 scikit-learn
+sqlalchemy
+psycopg2-binary
