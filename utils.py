@@ -15,6 +15,10 @@ from psycopg2.extras import execute_values
 engine = create_engine(PG_CONN_STRING)
 
 
+def get_connection():
+    return psycopg2.connect(PG_CONN_STRING)
+
+
 def init_db():
     conn = get_connection()
     cursor = conn.cursor()
@@ -35,10 +39,6 @@ def init_db():
 
 
 init_db()
-
-
-def get_connection():
-    return psycopg2.connect(PG_CONN_STRING)
 
 
 def save_signals_to_db(df: pd.DataFrame):
