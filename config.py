@@ -1,5 +1,5 @@
 # config.py
-
+PG_CONN_STRING = "postgresql://crypto_db_wuvy_user:9kemWCUVQDgiCAI863bif4Fg8UmKfBUc@dpg-d1n9qbruibrs73c281ug-a.oregon-postgres.render.com/crypto_db_wuvy"
 DB_PATH = "binance_data.db"
 MODEL_PATH = "model.xgb"  # Path to save the model
 

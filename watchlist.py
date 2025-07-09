@@ -2,15 +2,20 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from binance_api import get_ohlcv
-import sqlite3
-from analysis import select_top_coins
+from sqlalchemy import create_engine
+from config import PG_CONN_STRING
+from analysis import (
+    select_top_coins,
+)  # Đảm bảo dùng kết nối PostgreSQL bên trong hàm này
+
+# Kết nối đến PostgreSQL
+engine = create_engine(PG_CONN_STRING)
 
 
 def show_watchlist(symbols):
     st.set_page_config(
         layout="wide", page_title="Theo dõi Coin Binance", page_icon="💰"
     )
-
     col1, col2 = st.columns([1, 3])
 
     with col1:
@@ -19,16 +24,14 @@ def show_watchlist(symbols):
             symbol = st.selectbox(
                 "Chọn đồng coin",
                 symbols,
-                help=f"Chọn đồng coin bạn muốn xem dữ liệu giá {len(symbols)}",
+                help=f"Chọn coin bạn muốn xem ({len(symbols)} coin)",
             )
             interval = st.selectbox(
                 "Chọn khung thời gian",
                 ["1m", "5m", "15m", "1h", "4h", "1d", "1w"],
-                help="Chọn khoảng thời gian của mỗi nến",
                 index=3,
             )
 
-            # Lấy dữ liệu đủ lớn để lọc (limit tối đa 1000 theo API Binance)
             data_raw = get_ohlcv(symbol, interval, limit=1000)
             df_raw = pd.DataFrame(
                 data_raw,
@@ -51,7 +54,7 @@ def show_watchlist(symbols):
                 df_raw["Thời gian mở nến"], unit="ms"
             )
 
-            # Chuyển các cột số sang kiểu số
+            # Convert numeric columns
             num_cols = [
                 "Giá mở cửa",
                 "Giá cao nhất",
@@ -66,28 +69,25 @@ def show_watchlist(symbols):
             for col in num_cols:
                 df_raw[col] = pd.to_numeric(df_raw[col], errors="coerce")
 
-            # Bộ lọc ngày
+            # Các bộ lọc
             start_date = st.date_input(
-                "Chọn ngày bắt đầu", value=df_raw["Thời gian mở nến"].min().date()
+                "Ngày bắt đầu", df_raw["Thời gian mở nến"].min().date()
             )
             end_date = st.date_input(
-                "Chọn ngày kết thúc", value=df_raw["Thời gian mở nến"].max().date()
+                "Ngày kết thúc", df_raw["Thời gian mở nến"].max().date()
             )
             if start_date > end_date:
-                st.error("Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc.")
+                st.error("Ngày bắt đầu phải nhỏ hơn ngày kết thúc.")
 
-            # Bộ lọc giá mở cửa
             min_open, max_open = st.slider(
-                "Chọn khoảng giá mở cửa",
+                "Khoảng giá mở cửa",
                 float(df_raw["Giá mở cửa"].min()),
                 float(df_raw["Giá mở cửa"].max()),
                 (float(df_raw["Giá mở cửa"].min()), float(df_raw["Giá mở cửa"].max())),
                 step=0.01,
             )
-
-            # Bộ lọc giá đóng cửa
             min_close, max_close = st.slider(
-                "Chọn khoảng giá đóng cửa",
+                "Khoảng giá đóng cửa",
                 float(df_raw["Giá đóng cửa"].min()),
                 float(df_raw["Giá đóng cửa"].max()),
                 (
@@ -96,10 +96,8 @@ def show_watchlist(symbols):
                 ),
                 step=0.01,
             )
-
-            # Bộ lọc khối lượng giao dịch
             min_vol, max_vol = st.slider(
-                "Chọn khoảng khối lượng giao dịch",
+                "Khối lượng giao dịch",
                 float(df_raw["Khối lượng giao dịch"].min()),
                 float(df_raw["Khối lượng giao dịch"].max()),
                 (
@@ -108,18 +106,11 @@ def show_watchlist(symbols):
                 ),
                 step=0.01,
             )
-
-            # Bộ lọc số lượng giao dịch tối thiểu
             min_trades = st.number_input(
-                "Tối thiểu số lượng giao dịch",
-                min_value=0,
-                value=0,
-                step=1,
+                "Tối thiểu số lượng giao dịch", min_value=0, value=0, step=1
             )
-
-            # Bộ lọc khối lượng mua (base)
             min_buy_base, max_buy_base = st.slider(
-                "Chọn khoảng khối lượng mua (base)",
+                "Khối lượng mua (base)",
                 float(df_raw["Khối lượng mua (base)"].min()),
                 float(df_raw["Khối lượng mua (base)"].max()),
                 (
@@ -129,35 +120,27 @@ def show_watchlist(symbols):
                 step=0.01,
             )
 
-            # Bộ lọc biến động giá nến (High - Low)
             df_raw["Biến động"] = df_raw["Giá cao nhất"] - df_raw["Giá thấp nhất"]
             min_volatility, max_volatility = st.slider(
-                "Chọn khoảng biến động giá (High - Low)",
+                "Biến động giá (High - Low)",
                 float(df_raw["Biến động"].min()),
                 float(df_raw["Biến động"].max()),
-                (
-                    float(df_raw["Biến động"].min()),
-                    float(df_raw["Biến động"].max()),
-                ),
+                (float(df_raw["Biến động"].min()), float(df_raw["Biến động"].max())),
                 step=0.01,
             )
 
-            # Số dòng dữ liệu hiển thị
             num_rows = st.slider("Số dòng dữ liệu hiển thị", 10, 1000, 100)
 
     with col2:
-        # st.sidebar.header("Gợi ý đầu tư theo dữ liệu lịch sử")
         with st.spinner("Đang tải dữ liệu..."):
-            conn = sqlite3.connect("binance_data.db")
             all_symbols = [s for s in symbols if s.endswith("USDT")]
-            top_coins = select_top_coins(conn, all_symbols, top_n=20)
-            conn.close()
+            with engine.connect() as conn:
+                top_coins = select_top_coins(conn, all_symbols, top_n=20)
 
             if top_coins.empty:
                 st.warning("Không có dữ liệu để hiển thị.")
             else:
                 st.write("### Top 20 đồng coin nên đầu tư")
-                # Hiển thị bảng trong sidebar hoặc main page
                 st.dataframe(
                     top_coins[
                         [
@@ -174,7 +157,6 @@ def show_watchlist(symbols):
 
         st.title("📊 Bảng điều khiển giá Coin Binance")
 
-        # Lọc dữ liệu theo bộ lọc
         df = df_raw[
             (df_raw["Thời gian mở nến"].dt.date >= start_date)
             & (df_raw["Thời gian mở nến"].dt.date <= end_date)
@@ -199,30 +181,14 @@ def show_watchlist(symbols):
                 x="Thời gian mở nến",
                 y="Giá đóng cửa",
                 title=f"Biểu đồ giá {symbol}",
-                labels={
-                    "Thời gian mở nến": "Thời gian",
-                    "Giá đóng cửa": "Giá đóng cửa",
-                    "Giá mở cửa": "Giá mở cửa",
-                    "Giá cao nhất": "Giá cao nhất",
-                    "Giá thấp nhất": "Giá thấp nhất",
-                    "Khối lượng giao dịch": "Khối lượng giao dịch",
-                },
-                hover_data={
-                    "Thời gian mở nến": True,
-                    "Giá đóng cửa": True,
-                    "Giá mở cửa": True,
-                    "Giá cao nhất": True,
-                    "Giá thấp nhất": True,
-                    "Khối lượng giao dịch": True,
-                },
+                hover_data=[
+                    "Giá mở cửa",
+                    "Giá cao nhất",
+                    "Giá thấp nhất",
+                    "Khối lượng giao dịch",
+                ],
             )
-
-            fig.update_layout(
-                xaxis_title="Thời gian",
-                yaxis_title="Giá đóng cửa",
-                hoverlabel=dict(bgcolor="white", font_size=12, font_family="Arial"),
-            )
-
+            fig.update_layout(xaxis_title="Thời gian", yaxis_title="Giá đóng cửa")
             st.plotly_chart(fig, use_container_width=True)
 
             st.subheader(f"📋 Bảng dữ liệu ({num_rows} dòng mới nhất)")

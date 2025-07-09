@@ -1,14 +1,16 @@
+# utils_postgres.py
+
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
 import ta
-import sqlite3
 import glob
-
-conn = sqlite3.connect("coin_data.db")
-# utils.py
-
 from datetime import datetime
+from sqlalchemy import create_engine
+from config import PG_CONN_STRING  # PostgreSQL connection string
+
+# Kết nối đến PostgreSQL qua SQLAlchemy
+engine = create_engine(PG_CONN_STRING)
 
 
 def log(msg):
@@ -16,7 +18,14 @@ def log(msg):
 
 
 def save_to_db(symbol, df):
-    df.to_sql(symbol, conn, if_exists="append", index=False)
+    """
+    Lưu DataFrame vào PostgreSQL.
+    """
+    try:
+        df.to_sql(symbol.lower(), engine, if_exists="append", index=False)
+        log(f"✔ Lưu {symbol} vào database thành công.")
+    except Exception as e:
+        log(f"❌ Lỗi khi lưu {symbol} vào database: {e}")
 
 
 def save_ohlcv_to_csv(data, filename, folder="data"):
@@ -62,9 +71,6 @@ def load_all_excel_logs():
 
 
 def find_top_movers(data_folder="data"):
-    import pandas as pd
-    import os
-
     results = []
     for file in os.listdir(data_folder):
         if file.endswith("_1h.csv"):

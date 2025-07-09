@@ -14,10 +14,9 @@ import pandas as pd
 import time
 from binance_api import get_ohlcv
 from config import SLEEP_BETWEEN_REQUESTS
+from config import PG_CONN_STRING
 
-engine = create_engine(
-    "postgresql://crypto_db_wuvy_user:9kemWCUVQDgiCAI863bif4Fg8UmKfBUc@dpg-d1n9qbruibrs73c281ug-a.oregon-postgres.render.com/crypto_db_wuvy"
-)
+engine = create_engine(PG_CONN_STRING)
 metadata = MetaData()
 
 # Định nghĩa bảng ohlcv tương ứng
