@@ -16,7 +16,7 @@ from binance_api import get_ohlcv
 from config import SLEEP_BETWEEN_REQUESTS
 
 engine = create_engine(
-    "postgresql://crypto_db_wuvy_user:9kemWCUVQDgiCAI863bif4Fg8UmKfBUc@dpg-d1n9qbruibrs73c281ug-a:5432/crypto_db_wuvy"
+    "postgresql://crypto_db_wuvy_user:9kemWCUVQDgiCAI863bif4Fg8UmKfBUc@dpg-d1n9qbruibrs73c281ug-a.oregon-postgres.render.com/crypto_db_wuvy"
 )
 metadata = MetaData()
 
