@@ -5,7 +5,11 @@ BASE_URL = "https://api.binance.com"
 
 def get_exchange_info():
     url = f"{BASE_URL}/api/v3/exchangeInfo"
-    return requests.get(url, verify=False).json()
+    response = requests.get(url, timeout=10, verify=False)
+
+    print("Status code:", response.status_code)
+    print("Response content:", response.text[:500])  # In ra 500 ký tự đầu
+    return response.json()
 
 
 # def get_all_symbols():
