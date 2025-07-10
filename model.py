@@ -3,30 +3,50 @@ import joblib
 import pandas as pd
 import gdown
 import io
+import os
 from binance_api import get_ohlcv
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
+from dotenv import load_dotenv
 
-FILE_ID = "1knTncwpwhu9JXCha9_vF6ARBiDXfhTEu"  # ID Google Drive chứa mô hình
+load_dotenv()
+MODEL_FILE_ID = os.getenv("MODEL_FILE_ID")
+
+
+def get_authenticated_drive():
+    gauth = GoogleAuth()
+
+    # Tìm file token đã xác thực trước đó
+    gauth.LoadCredentialsFile("credentials.json")
+
+    if gauth.credentials is None:
+        raise Exception("❌ Google Drive chưa được xác thực OAuth.")
+    elif gauth.access_token_expired:
+        gauth.Refresh()
+    else:
+        gauth.Authorize()
+
+    gauth.SaveCredentialsFile("credentials.json")
+    return GoogleDrive(gauth)
 
 
 def upload_model_to_drive(model, filename="model.xgb"):
-    buffer = io.BytesIO()
-    joblib.dump(model, buffer)
-    buffer.seek(0)
+    try:
+        buffer = io.BytesIO()
+        joblib.dump(model, buffer)
+        buffer.seek(0)
 
-    gauth = GoogleAuth()
-    gauth.LocalWebserverAuth()
-    drive = GoogleDrive(gauth)
-
-    gfile = drive.CreateFile({"title": filename})
-    gfile.SetContentString(buffer.getvalue(), encoding="ISO-8859-1")  # Upload binary
-    gfile.Upload()
-    print(f"✅ Model uploaded to Google Drive as '{filename}'")
+        drive = get_authenticated_drive()
+        gfile = drive.CreateFile({"title": filename})
+        gfile.SetContentString(buffer.getvalue(), encoding="ISO-8859-1")
+        gfile.Upload()
+        print(f"✅ Model uploaded to Google Drive as '{filename}'")
+    except Exception as e:
+        print(f"❌ Failed to upload model: {e}")
 
 
 def load_model_from_drive():
-    url = f"https://drive.google.com/uc?id={FILE_ID}"
+    url = f"https://drive.google.com/uc?id={MODEL_FILE_ID}"
     output = io.BytesIO()
 
     try:
@@ -52,7 +72,6 @@ def add_technical_indicators(df):
     df["RSI_14"] = 100 - (100 / (1 + rs))
 
     df["pct_change"] = df["close"].pct_change()
-
     df.fillna(0, inplace=True)
     return df
 
@@ -110,6 +129,6 @@ def predict_and_trade(symbol="BTCUSDT"):
     if prediction == 1:
         print(f"🟢 {symbol}: BUY signal!")
     elif prediction == 0:
-        print(f"🔴 {symbol}: SELL signal!")  # hoặc HOLD tùy chiến lược
+        print(f"🔴 {symbol}: SELL signal!")
     else:
         print(f"⚪ {symbol}: HOLD signal.")
