@@ -41,13 +41,9 @@ def init_db():
 init_db()
 
 
-def save_signals_to_db(df: pd.DataFrame):
+def save_signals_to_db(values: list[tuple]):
     conn = get_connection()
     cursor = conn.cursor()
-
-    values = [
-        (row["Symbol"], row["Signal"], row["Thời gian"]) for _, row in df.iterrows()
-    ]
 
     query = """
         INSERT INTO crypto_signals (symbol, signal, timestamp)

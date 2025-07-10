@@ -1,6 +1,6 @@
 import time
 import schedule
-from model import train_model, save_model, load_model
+from model import train_model, upload_model_to_drive, load_model_from_drive
 from data_manager import (
     crawl_and_save_batch,
     load_data_multi_symbols,
@@ -22,10 +22,8 @@ def retrain_model():
     log("Retraining model...")
 
     # Crawl data
-    all_symbols = get_all_symbols()
-    selected_symbols = [s for s in all_symbols if s.endswith("USDT")]
+    selected_symbols = get_all_symbols()
     log(f"Selected symbols: {selected_symbols}")
-    crawl_and_save_batch(selected_symbols)
 
     # Load and prepare data
     df_all = load_data_multi_symbols(selected_symbols)
@@ -47,7 +45,7 @@ def retrain_model():
     model = train_model(X_train, y_train)
 
     # Save the trained model
-    save_model(model)
+    upload_model_to_drive(model)
 
 
 # Schedule training every day at midnight

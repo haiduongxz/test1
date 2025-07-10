@@ -3,13 +3,17 @@ import pandas as pd
 import time
 import requests
 from datetime import datetime
-from model import load_model, add_technical_indicators, create_features_and_labels
+from model import (
+    load_model_from_drive,
+    add_technical_indicators,
+    create_features_and_labels,
+)
 from utils import load_all_excel_logs, save_signals_to_db
 from crypto_advisor import ask_gpt, get_rss_articles, load_saved_articles
 import json
 
 REFRESH_INTERVAL = 350
-model = load_model()
+model = load_model_from_drive()
 session = requests.Session()
 session.mount("https://", requests.adapters.HTTPAdapter(max_retries=3))
 

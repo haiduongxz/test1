@@ -7,23 +7,27 @@ from sqlalchemy import (
     Float,
     Integer,
     MetaData,
-    insert,
 )
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 import pandas as pd
 import time
 from binance_api import get_ohlcv
-from config import SLEEP_BETWEEN_REQUESTS
-from config import PG_CONN_STRING
+from config import SLEEP_BETWEEN_REQUESTS, PG_CONN_STRING
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# Constants
+MAX_WORKERS = 5
+INTERVALS = ["15m", "1h", "4h"]
 
 engine = create_engine(PG_CONN_STRING)
 metadata = MetaData()
 
-# Định nghĩa bảng ohlcv tương ứng
+# ✅ Thêm cột `interval`
 ohlcv_table = Table(
     "ohlcv",
     metadata,
     Column("symbol", String, primary_key=True),
+    Column("interval", String, primary_key=True),
     Column("open_time", BigInteger, primary_key=True),
     Column("open", Float),
     Column("high", Float),
@@ -42,10 +46,11 @@ def create_table_if_not_exists():
     metadata.create_all(engine)
 
 
-def save_ohlcv_to_db(symbol, ohlcv_data):
+def save_ohlcv_to_db(symbol, interval, ohlcv_data):
     records = [
         {
             "symbol": symbol,
+            "interval": interval,
             "open_time": int(row[0]),
             "open": float(row[1]),
             "high": float(row[2]),
@@ -60,14 +65,17 @@ def save_ohlcv_to_db(symbol, ohlcv_data):
         }
         for row in ohlcv_data
     ]
-    with engine.begin() as conn:  # begin() tự động commit/rollback
-        for record in records:
-            stmt = (
-                pg_insert(ohlcv_table)
-                .values(**record)
-                .on_conflict_do_nothing(index_elements=["symbol", "open_time"])
-            )
-            conn.execute(stmt)
+
+    if not records:
+        return
+
+    with engine.begin() as conn:
+        stmt = (
+            pg_insert(ohlcv_table)
+            .values(records)
+            .on_conflict_do_nothing(index_elements=["symbol", "interval", "open_time"])
+        )
+        conn.execute(stmt)
 
 
 def load_data_multi_symbols(symbols):
@@ -87,20 +95,35 @@ def load_data_multi_symbols(symbols):
 
 def crawl_and_save_batch(symbols):
     errors = []
-    intervals = ["1m", "5m", "15m", "1h", "4h", "1d"]
 
-    for interval in intervals:
-        for i, symbol in enumerate(symbols, 1):
-            try:
-                print(f"[{i}/{len(symbols)}] Fetching {symbol} {interval} data...")
-                ohlcv = get_ohlcv(symbol, interval=interval, limit=1000)
-                save_ohlcv_to_db(symbol, ohlcv)
-                print(f"✔ Saved {symbol} {interval}")
-            except Exception as e:
-                print(f"✖ Error {symbol} {interval}: {e}")
-                errors.append(f"{symbol}_{interval}")
+    def fetch_and_save(symbol, interval):
+        print(f"🔄 Processing {symbol} {interval} ...")
+        try:
+            print(f"📥 Fetching {symbol} {interval} ...")
+            ohlcv = get_ohlcv(symbol, interval=interval, limit=1000)
+            if ohlcv:
+                save_ohlcv_to_db(symbol, interval, ohlcv)
+                print(f"✅ Saved {symbol} {interval} ({len(ohlcv)} records)")
+            else:
+                print(f"⚠️ No data returned for {symbol} {interval}")
+            return None
+        except Exception as e:
+            print(f"❌ Error {symbol} {interval}: {e}")
+            return f"{symbol}_{interval}"
 
-            time.sleep(SLEEP_BETWEEN_REQUESTS)
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = []
+        for symbol in symbols:
+            for interval in INTERVALS:
+                futures.append(executor.submit(fetch_and_save, symbol, interval))
+                time.sleep(SLEEP_BETWEEN_REQUESTS)
+
+        for future in as_completed(futures):
+            result = future.result()
+            if result:
+                errors.append(result)
 
     if errors:
-        print(f"Retry failed symbols later: {errors}")
+        print("\n⚠️ Lỗi khi lấy dữ liệu các cặp sau:")
+        for err in errors:
+            print(" -", err)
