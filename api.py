@@ -82,7 +82,7 @@ def crawl_data():
         )
 
 
-@app.post("/train")
+@app.post("/train-bot-coins")
 def train():
     try:
         retrain_model()
