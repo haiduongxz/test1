@@ -19,6 +19,9 @@ def get_exchange_info():
 
 def get_all_symbols():
     data = get_exchange_info()
+    if "symbols" not in data:
+        print("Không lấy được dữ liệu từ Binance. Có thể bị chặn IP.")
+        return []
     return [
         s["symbol"]
         for s in data["symbols"]
