@@ -100,7 +100,7 @@ def crawl_and_save_batch(symbols):
         print(f"🔄 Processing {symbol} {interval} ...")
         try:
             print(f"📥 Fetching {symbol} {interval} ...")
-            ohlcv = get_ohlcv(symbol, interval=interval, limit=1000)
+            ohlcv = get_ohlcv(symbol, interval=interval, limit=500)
             if ohlcv:
                 save_ohlcv_to_db(symbol, interval, ohlcv)
                 print(f"✅ Saved {symbol} {interval} ({len(ohlcv)} records)")

@@ -11,7 +11,13 @@ from model import (
 )
 from utils import save_signals_to_db
 from datetime import datetime
+from sqlalchemy import text
+from sqlalchemy import (
+    create_engine,
+)
+from config import PG_CONN_STRING
 
+engine = create_engine(PG_CONN_STRING)
 app = FastAPI()
 
 
@@ -92,4 +98,24 @@ def train():
         return JSONResponse(
             status_code=500,
             content={"status": "error", "message": "Training failed", "detail": str(e)},
+        )
+
+
+@app.post("/clean")
+def clean_old_data():
+    try:
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    """
+                DELETE FROM ohlcv
+                WHERE open_time < EXTRACT(EPOCH FROM NOW() - INTERVAL '7 days') * 1000
+            """
+                )
+            )
+        return {"status": "success", "message": "Old data deleted"}
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": str(e)},
         )
