@@ -127,3 +127,6 @@ def crawl_and_save_batch(symbols):
         print("\n⚠️ Lỗi khi lấy dữ liệu các cặp sau:")
         for err in errors:
             print(" -", err)
+
+
+create_table_if_not_exists()
