@@ -88,9 +88,22 @@ def crawl_data():
         )
 
 
+def clean_old_data():
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+            DELETE FROM ohlcv
+            WHERE open_time < EXTRACT(EPOCH FROM NOW() - INTERVAL '7 days') * 1000
+        """
+            )
+        )
+
+
 @app.post("/train-bot-coins")
 def train():
     try:
+        clean_old_data()
         retrain_model()
         return {"status": "success", "message": "Model trained successfully"}
     except Exception as e:
@@ -98,24 +111,4 @@ def train():
         return JSONResponse(
             status_code=500,
             content={"status": "error", "message": "Training failed", "detail": str(e)},
-        )
-
-
-@app.post("/clean")
-def clean_old_data():
-    try:
-        with engine.begin() as conn:
-            conn.execute(
-                text(
-                    """
-                DELETE FROM ohlcv
-                WHERE open_time < EXTRACT(EPOCH FROM NOW() - INTERVAL '7 days') * 1000
-            """
-                )
-            )
-        return {"status": "success", "message": "Old data deleted"}
-    except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={"status": "error", "message": str(e)},
         )
