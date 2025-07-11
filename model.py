@@ -12,26 +12,23 @@ from functools import lru_cache
 
 load_dotenv()
 MODEL_FILE_ID = os.getenv("MODEL_FILE_ID")
-gauth = GoogleAuth()
-gauth.LocalWebserverAuth()  # mở trình duyệt để xác thực lần đầu
-drive = GoogleDrive(gauth)
 
 
-# def get_authenticated_drive():
-#     gauth = GoogleAuth()
+def get_authenticated_drive():
+    gauth = GoogleAuth()
 
-#     # Tìm file token đã xác thực trước đó
-#     gauth.LoadCredentialsFile("client_secrets.json")
+    # Tìm file token đã xác thực trước đó
+    gauth.LoadCredentialsFile("credentials.json")
 
-#     if gauth.credentials is None:
-#         raise Exception("❌ Google Drive chưa được xác thực OAuth.")
-#     elif gauth.access_token_expired:
-#         gauth.Refresh()
-#     else:
-#         gauth.Authorize()
+    if gauth.credentials is None:
+        raise Exception("❌ Google Drive chưa được xác thực OAuth.")
+    elif gauth.access_token_expired:
+        gauth.Refresh()
+    else:
+        gauth.Authorize()
 
-#     gauth.SaveCredentialsFile("client_secrets.json")
-#     return GoogleDrive(gauth)
+    gauth.SaveCredentialsFile("credentials.json")
+    return GoogleDrive(gauth)
 
 
 def upload_model_to_drive(model, filename="model.xgb"):
@@ -40,7 +37,7 @@ def upload_model_to_drive(model, filename="model.xgb"):
         joblib.dump(model, buffer)
         buffer.seek(0)
 
-        # drive = get_authenticated_drive()
+        drive = get_authenticated_drive()
         gfile = drive.CreateFile({"title": filename})
         gfile.SetContentString(buffer.getvalue(), encoding="ISO-8859-1")
         gfile.Upload()
