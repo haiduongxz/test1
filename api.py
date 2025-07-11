@@ -3,7 +3,8 @@ from scheduler import retrain_model  # Giả sử mã bạn đưa nằm trong fi
 from utils import log
 from data_manager import crawl_and_save_batch
 from fastapi.responses import JSONResponse
-from binance_api import get_all_symbols, get_ohlcv
+from binance_api import get_all_symbols
+from dashboard import get_ohlcv
 from model import (
     load_model_from_drive,
     add_technical_indicators,
@@ -26,22 +27,27 @@ def read_root():
     return {"message": "Model retraining API is running."}
 
 
-def get_signal(symbol: str):
+def get_signal(symbol: str, model):
     try:
         df = get_ohlcv(symbol)
         df = add_technical_indicators(df)
         X, _ = create_features_and_labels(df)
         if X.empty:
             return "NO DATA"
-        pred = load_model_from_drive().predict(X.iloc[[-1]])[0]
+        pred = model.predict(X.iloc[[-1]])[0]
         return "BUY" if pred == 1 else "SELL" if pred == -1 else "HOLD"
-    except Exception:
+    except Exception as e:
+        print(f"Lỗi khi xử lý symbol {symbol}: {e}")
         return "ERROR"
 
 
 @app.post("/generate-and-save-signals")
 def generate_and_save_signals():
     try:
+        model = load_model_from_drive()
+        if model is None:
+            return {"status": "error", "message": "Không thể tải model"}
+
         symbols = get_all_symbols()
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -49,7 +55,7 @@ def generate_and_save_signals():
         result_list = []
 
         for symbol in symbols:
-            signal = get_signal(symbol)
+            signal = get_signal(symbol, model)
             values.append((symbol, signal, current_time))
             result_list.append(
                 {"Symbol": symbol, "Signal": signal, "Thời gian": current_time}
@@ -64,15 +70,7 @@ def generate_and_save_signals():
         }
 
     except Exception as e:
-        print(f"❌ Lỗi generate signals: {e}")
-        return JSONResponse(
-            status_code=500,
-            content={
-                "status": "error",
-                "message": "Failed to generate signals",
-                "detail": str(e),
-            },
-        )
+        return {"status": "error", "message": str(e)}
 
 
 @app.post("/crawl")

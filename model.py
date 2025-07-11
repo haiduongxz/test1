@@ -8,6 +8,7 @@ from binance_api import get_ohlcv
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 from dotenv import load_dotenv
+from functools import lru_cache
 
 load_dotenv()
 MODEL_FILE_ID = os.getenv("MODEL_FILE_ID")
@@ -45,18 +46,20 @@ def upload_model_to_drive(model, filename="model.xgb"):
         print(f"❌ Failed to upload model: {e}")
 
 
+@lru_cache(maxsize=1)
 def load_model_from_drive():
     url = f"https://drive.google.com/uc?id={MODEL_FILE_ID}"
     output = io.BytesIO()
 
     try:
+        print(f"📥 Tải model từ: {url}")
         gdown.download(url, output, quiet=False)
         output.seek(0)
         model = joblib.load(output)
         print("✅ Model loaded from Google Drive (memory only)")
         return model
     except Exception as e:
-        print(f"❌ Failed to load model: {e}")
+        print(f"❌ Failed to load model: {e.__class__.__name__}: {e}")
         return None
 
 
