@@ -18,7 +18,7 @@ def get_authenticated_drive():
     gauth = GoogleAuth()
 
     # Tìm file token đã xác thực trước đó
-    gauth.LoadCredentialsFile("credentials.json")
+    gauth.LoadCredentialsFile("client_secrets.json")
 
     if gauth.credentials is None:
         raise Exception("❌ Google Drive chưa được xác thực OAuth.")
@@ -27,7 +27,7 @@ def get_authenticated_drive():
     else:
         gauth.Authorize()
 
-    gauth.SaveCredentialsFile("credentials.json")
+    gauth.SaveCredentialsFile("client_secrets.json")
     return GoogleDrive(gauth)
 
 
@@ -101,7 +101,7 @@ def create_features_and_labels(df):
 
 def train_model(X, y):
     model = xgb.XGBClassifier(
-        use_label_encoder=False,
+        # use_label_encoder=False,
         n_estimators=100,
         max_depth=4,
         learning_rate=0.1,
