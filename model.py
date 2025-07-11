@@ -1,4 +1,5 @@
 import xgboost as xgb
+import joblib
 import pandas as pd
 import gdown
 import io
@@ -15,6 +16,8 @@ MODEL_FILE_ID = os.getenv("MODEL_FILE_ID")
 
 def get_authenticated_drive():
     gauth = GoogleAuth()
+
+    # Tìm file token đã xác thực trước đó
     gauth.LoadCredentialsFile("credentials.json")
 
     if gauth.credentials is None:
@@ -28,17 +31,19 @@ def get_authenticated_drive():
     return GoogleDrive(gauth)
 
 
-def upload_model_to_drive(model, filename="model.json"):
+def upload_model_to_drive(model, filename="model.xgb"):
     try:
-        model.save_model(filename)
+        # Lưu model ra file tạm
+        temp_model_path = "temp_model.xgb"
+        joblib.dump(model, temp_model_path)
 
         drive = get_authenticated_drive()
         gfile = drive.CreateFile({"title": filename})
-        gfile.SetContentFile(filename)
+        gfile.SetContentFile(temp_model_path)  # dùng file nhị phân
         gfile.Upload()
         print(f"✅ Model uploaded to Google Drive as '{filename}'")
 
-        os.remove(filename)
+        os.remove(temp_model_path)  # Xóa file tạm sau khi upload
     except Exception as e:
         print(f"❌ Failed to upload model: {e}")
 
@@ -46,17 +51,14 @@ def upload_model_to_drive(model, filename="model.json"):
 @lru_cache(maxsize=1)
 def load_model_from_drive():
     url = f"https://drive.google.com/uc?id={MODEL_FILE_ID}"
-    temp_filename = "temp_model.json"
+    output = io.BytesIO()
 
     try:
         print(f"📥 Tải model từ: {url}")
-        gdown.download(url, temp_filename, quiet=False)
-
-        model = xgb.Booster()
-        model.load_model(temp_filename)
-        os.remove(temp_filename)
-
-        print("✅ Model loaded from Google Drive")
+        gdown.download(url, output, quiet=False)
+        output.seek(0)
+        model = joblib.load(output)
+        print("✅ Model loaded from Google Drive (memory only)")
         return model
     except Exception as e:
         print(f"❌ Failed to load model: {e.__class__.__name__}: {e}")
@@ -101,13 +103,14 @@ def create_features_and_labels(df):
 
 def train_model(X, y):
     model = xgb.XGBClassifier(
+        # use_label_encoder=False,
         n_estimators=100,
         max_depth=4,
         learning_rate=0.1,
         eval_metric="logloss",
     )
     model.fit(X, y)
-    return model.get_booster()  # Trả về Booster để lưu
+    return model
 
 
 def predict_and_trade(symbol="BTCUSDT"):
@@ -125,10 +128,12 @@ def predict_and_trade(symbol="BTCUSDT"):
         print("❌ Not enough data to predict.")
         return
 
-    dmatrix = xgb.DMatrix(X.iloc[[-1]])
-    prediction = model.predict(dmatrix)[0]
+    last_row = X.iloc[[-1]]
+    prediction = model.predict(last_row)[0]
 
-    if prediction > 0.5:
+    if prediction == 1:
         print(f"🟢 {symbol}: BUY signal!")
-    else:
+    elif prediction == 0:
         print(f"🔴 {symbol}: SELL signal!")
+    else:
+        print(f"⚪ {symbol}: HOLD signal.")
