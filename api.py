@@ -10,6 +10,7 @@ from model import (
     add_technical_indicators,
     create_features_and_labels,
 )
+import time
 from utils import save_signals_to_db
 from datetime import datetime
 from sqlalchemy import text
@@ -60,6 +61,7 @@ def generate_and_save_signals():
             result_list.append(
                 {"Symbol": symbol, "Signal": signal, "Thời gian": current_time}
             )
+            time.sleep(0.5)
 
         save_signals_to_db(values)
 
