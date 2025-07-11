@@ -1,5 +1,4 @@
 import xgboost as xgb
-import joblib
 import pandas as pd
 import gdown
 import io
@@ -16,8 +15,6 @@ MODEL_FILE_ID = os.getenv("MODEL_FILE_ID")
 
 def get_authenticated_drive():
     gauth = GoogleAuth()
-
-    # Tìm file token đã xác thực trước đó
     gauth.LoadCredentialsFile("credentials.json")
 
     if gauth.credentials is None:
@@ -33,17 +30,16 @@ def get_authenticated_drive():
 
 def upload_model_to_drive(model, filename="model.xgb"):
     try:
-        # Lưu model ra file tạm
         temp_model_path = "temp_model.xgb"
-        joblib.dump(model, temp_model_path)
+        model.save_model(temp_model_path)
 
         drive = get_authenticated_drive()
         gfile = drive.CreateFile({"title": filename})
-        gfile.SetContentFile(temp_model_path)  # dùng file nhị phân
+        gfile.SetContentFile(temp_model_path)
         gfile.Upload()
         print(f"✅ Model uploaded to Google Drive as '{filename}'")
 
-        os.remove(temp_model_path)  # Xóa file tạm sau khi upload
+        os.remove(temp_model_path)
     except Exception as e:
         print(f"❌ Failed to upload model: {e}")
 
@@ -51,14 +47,16 @@ def upload_model_to_drive(model, filename="model.xgb"):
 @lru_cache(maxsize=1)
 def load_model_from_drive():
     url = f"https://drive.google.com/uc?id={MODEL_FILE_ID}"
-    output = io.BytesIO()
+    output_path = "downloaded_model.xgb"
 
     try:
         print(f"📥 Tải model từ: {url}")
-        gdown.download(url, output, quiet=False)
-        output.seek(0)
-        model = joblib.load(output)
-        print("✅ Model loaded from Google Drive (memory only)")
+        gdown.download(url, output_path, quiet=False)
+
+        model = xgb.XGBClassifier()
+        model.load_model(output_path)
+        print("✅ Model loaded from Google Drive")
+        os.remove(output_path)
         return model
     except Exception as e:
         print(f"❌ Failed to load model: {e.__class__.__name__}: {e}")
@@ -103,11 +101,11 @@ def create_features_and_labels(df):
 
 def train_model(X, y):
     model = xgb.XGBClassifier(
-        # use_label_encoder=False,
         n_estimators=100,
         max_depth=4,
         learning_rate=0.1,
         eval_metric="logloss",
+        use_label_encoder=False,
     )
     model.fit(X, y)
     return model
